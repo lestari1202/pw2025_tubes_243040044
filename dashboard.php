@@ -1,33 +1,44 @@
 <?php
+// Mulai session dan koneksi ke database
 require 'koneksi.php';
+session_start();
 
-// Hapus data jika ada parameter hapus di URL
-if (isset($_GET['hapus'])) {
-    $id = $_GET['hapus'];
-
-    // Ambil nama file foto untuk dihapus dari folder img (opsional)
-    $get = mysqli_query($conn, "SELECT photo FROM movies WHERE id = $id");
-    $foto = mysqli_fetch_assoc($get)["photo"];
-    if ($foto) {
-        unlink("img/" . $foto); // Hapus file dari folder img
-    }
-
-    // Hapus data dari database
-    mysqli_query($conn, "DELETE FROM movies WHERE id = $id");
-
-    // Redirect ulang agar URL bersih
-    header("Location: index.php");
+// Cek apakah user sudah login
+if (!isset($_SESSION['username'])) {
+    header("Location: login.php");
     exit;
 }
 
-
-// Proses pencarian
-$keyword = isset($_GET['search']) ? $_GET['search'] : '';
-if ($keyword != '') {
-    $result = mysqli_query($conn, "SELECT * FROM movies WHERE title LIKE '%$keyword%'");
-} else {
-    $result = mysqli_query($conn, "SELECT * FROM movies");
+// Fitur Hapus Data Movie
+if (isset($_GET['hapus'])) {
+    $id = $_GET['hapus'];
+    $get = mysqli_query($conn, "SELECT photo FROM movies WHERE id = $id");
+    $foto = mysqli_fetch_assoc($get)["photo"];
+    if ($foto) unlink("img/" . $foto); // Hapus gambar dari folder
+    mysqli_query($conn, "DELETE FROM movies WHERE id = $id"); // Hapus data dari DB
+    header("Location: dashboard.php");
+    exit;
 }
+
+// Proses pencarian keyword
+$keyword = isset($_GET['search']) ? $_GET['search'] : '';
+
+// Sorting data berdasarkan kolom tertentu
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'id';
+$order = isset($_GET['order']) && $_GET['order'] === 'desc' ? 'DESC' : 'ASC';
+
+// Validasi kolom yang bisa disort
+$allowed_sort = ['title', 'release_year', 'director', 'id'];
+if (!in_array($sort, $allowed_sort)) $sort = 'id';
+
+// Query data dari tabel movies
+$query = "SELECT * FROM movies";
+if ($keyword !== '') {
+    $query .= " WHERE title LIKE '%$keyword%'";
+}
+$query .= " ORDER BY $sort $order";
+
+$result = mysqli_query($conn, $query);
 ?>
 
 <!DOCTYPE html>
@@ -35,6 +46,7 @@ if ($keyword != '') {
 
 <head>
     <title>Daftar Movie</title>
+    <!-- Bootstrap untuk styling -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -58,12 +70,26 @@ if ($keyword != '') {
             background-color: white;
             color: black;
         }
+
+        thead th {
+            color: black;
+            background-color: #f8f9fa;
+        }
+
+        th a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        th a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
 <body>
 
-    <!-- Navbar Bootstrap -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Movie Collection</a>
@@ -74,13 +100,15 @@ if ($keyword != '') {
             <div class="collapse navbar-collapse" id="navbarSearch">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0"></ul>
 
-                <!-- Form search live -->
+                <!-- Form Search -->
                 <form class="d-flex me-2" id="searchForm" method="get">
                     <input class="form-control me-2" type="search" name="search" placeholder="Cari Judul"
                         aria-label="Search" id="searchInput" value="<?= htmlspecialchars($keyword); ?>">
+                    <input type="hidden" name="sort" value="<?= htmlspecialchars($sort); ?>">
+                    <input type="hidden" name="order" value="<?= htmlspecialchars($order); ?>">
                 </form>
 
-                <!-- Tombol Logout -->
+                <!-- Logout Button -->
                 <a href="logout.php" class="btn btn-outline-light">Logout</a>
             </div>
         </div>
@@ -92,14 +120,15 @@ if ($keyword != '') {
             <h1 class="text-dark">Daftar Movie</h1>
             <a href="tambah.php" class="btn btn-dark">+ Tambah Movie</a>
         </div>
+
         <table class="table table-bordered table-white table-hover text-center align-middle">
             <thead>
                 <tr>
                     <th>No</th>
                     <th>Poster</th>
-                    <th>Judul</th>
-                    <th>Tahun</th>
-                    <th>Sutradara</th>
+                    <th><a href="?sort=title&order=<?= $order === 'ASC' ? 'desc' : 'asc'; ?>">Judul</a></th>
+                    <th><a href="?sort=release_year&order=<?= $order === 'ASC' ? 'desc' : 'asc'; ?>">Tahun</a></th>
+                    <th><a href="?sort=director&order=<?= $order === 'ASC' ? 'desc' : 'asc'; ?>">Sutradara</a></th>
                     <th>Aktor</th>
                     <th>Durasi</th>
                     <th>Deskripsi</th>
@@ -111,13 +140,13 @@ if ($keyword != '') {
                 <?php while ($row = mysqli_fetch_assoc($result)) : ?>
                     <tr>
                         <td><?= $i++; ?></td>
-                        <td><img src="img/<?= $row["photo"]; ?>" alt="poster"></td>
-                        <td><?= $row["title"]; ?></td>
+                        <td><img src="img/<?= htmlspecialchars($row["photo"]); ?>" alt="poster"></td>
+                        <td><?= htmlspecialchars($row["title"]); ?></td>
                         <td><?= $row["release_year"]; ?></td>
-                        <td><?= $row["director"]; ?></td>
-                        <td><?= $row["actor"]; ?></td>
-                        <td><?= $row["duration"]; ?> menit</td>
-                        <td><?= $row["description"]; ?></td>
+                        <td><?= htmlspecialchars($row["director"]); ?></td>
+                        <td><?= htmlspecialchars($row["actor"]); ?></td>
+                        <td><?= htmlspecialchars($row["duration"]); ?> menit</td>
+                        <td><?= htmlspecialchars($row["description"]); ?></td>
                         <td>
                             <a href="edit.php?id=<?= $row['id']; ?>" class="btn btn-sm btn-dark mb-1">Edit</a><br>
                             <a href="dashboard.php?hapus=<?= $row['id']; ?>" class="btn btn-sm btn-danger"
@@ -130,8 +159,10 @@ if ($keyword != '') {
         </table>
     </div>
 
-    <!-- Bootstrap & Live Search Script -->
+    <!-- Script Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Live Search otomatis -->
     <script>
         const input = document.getElementById("searchInput");
         const form = document.getElementById("searchForm");
@@ -140,8 +171,8 @@ if ($keyword != '') {
         input.addEventListener("input", function() {
             clearTimeout(timeout);
             timeout = setTimeout(() => {
-                form.submit();
-            }, 500); // tunda 500ms setelah user berhenti mengetik
+                form.submit(); // submit otomatis setelah 500ms user berhenti mengetik
+            }, 500);
         });
     </script>
 </body>

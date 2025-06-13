@@ -1,21 +1,25 @@
 <?php
-session_start();
-require 'koneksi.php';
+session_start(); // Mulai session untuk menangani user login
+require 'koneksi.php'; // Koneksi ke database
 
+// Jika form register dikirim
 if (isset($_POST['register'])) {
-    $username = htmlspecialchars($_POST['username']);
-    $password = $_POST['password'];
-    $password2 = $_POST['password2'];
+    $username = htmlspecialchars($_POST['username']); // Ambil dan amankan username
+    $password = $_POST['password']; // Ambil password
+    $password2 = $_POST['password2']; // Ambil konfirmasi password
 
+    // Cek apakah password dan konfirmasi sama
     if ($password !== $password2) {
         $error = "Konfirmasi password tidak cocok!";
     } else {
+        // Cek apakah username sudah ada
         $result = mysqli_query($conn, "SELECT username FROM user WHERE username='$username'");
         if (mysqli_fetch_assoc($result)) {
             $error = "Username sudah digunakan!";
         } else {
-            $password = $_POST['password'];
+            // Hash password sebelum disimpan
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            // Simpan user baru dengan role default 'user'
             mysqli_query($conn, "INSERT INTO user (username, password, role) VALUES ('$username', '$hashedPassword', 'user')");
             $success = "Registrasi berhasil! Silakan <a href='login.php'>login</a>.";
         }
@@ -108,12 +112,18 @@ if (isset($_POST['register'])) {
 <body>
     <div class="container">
         <h1>Register</h1>
+
+        <!-- Tampilkan error jika ada -->
         <?php if (isset($error)) : ?>
             <p class="error"><?= $error ?></p>
         <?php endif; ?>
+
+        <!-- Tampilkan pesan sukses jika ada -->
         <?php if (isset($success)) : ?>
             <p class="success"><?= $success ?></p>
         <?php endif; ?>
+
+        <!-- Form registrasi -->
         <form action="" method="post">
             <label for="username">Username :</label>
             <input type="text" name="username" id="username" required>
@@ -126,6 +136,8 @@ if (isset($_POST['register'])) {
 
             <button type="submit" name="register">Register</button>
         </form>
+
+        <!-- Link ke login -->
         <p>Sudah punya akun? <a href="login.php">Login di sini</a></p>
     </div>
 </body>

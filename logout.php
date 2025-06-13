@@ -1,6 +1,15 @@
 <?php
+// Mulai sesi untuk mengakses data session
 session_start();
-session_unset();
-session_destroy(); // Hapus semua session
-header("Location: login.php"); // Redirect ke halaman login
+
+// Menghapus semua variabel session
+session_unset(); // Menghapus data-data yang tersimpan di dalam session
+
+// Menghancurkan session secara keseluruhan
+session_destroy(); // Menghapus session dari server
+
+// Redirect (pindahkan) pengguna ke halaman login
+header("Location: login.php");
+
+// Hentikan eksekusi kode setelah redirect
 exit;
